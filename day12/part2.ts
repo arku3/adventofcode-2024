@@ -8,120 +8,97 @@ const map: string[][] = text.split("\n").map((row) => row.split(""));
 const h = map.length;
 const w = map[0].length;
 
-const visited = new Map<string, boolean>();
+const visited = new Set<string>();
 
-interface Edge {
-  from: { y: number; x: number };
-  to: { y: number; x: number };
-}
-
-function pushEdge(edge: Edge, accEdges: Array<Edge>) {
-  const length = accEdges.length;
-  for (let row = 0; row < length; row++) {
-    // concat edges if they are connected horizontally or vertically, else add new edge
-    const currentEdge = accEdges[row];
-    if (
-      // if they are connected horizontally
-      currentEdge.from.y === currentEdge.to.y &&
-      edge.from.y === edge.to.y &&
-      currentEdge.from.y === edge.from.y &&
-      (currentEdge.from.x === edge.to.x || currentEdge.to.x === edge.from.x)
-    ) {
-      currentEdge.from.x = Math.min(currentEdge.from.x, edge.from.x);
-      currentEdge.to.x = Math.max(currentEdge.to.x, edge.to.x);
-      // console.log("merged horizontally", currentEdge);
-      return;
-    }
-    if (
-      // if they are connected vertically
-      currentEdge.from.x === currentEdge.to.x &&
-      edge.from.x === edge.to.x &&
-      currentEdge.from.x === edge.from.x &&
-      (currentEdge.from.y === edge.to.y || currentEdge.to.y === edge.from.y)
-    ) {
-      currentEdge.from.y = Math.min(currentEdge.from.y, edge.from.y);
-      currentEdge.to.y = Math.max(currentEdge.to.y, edge.to.y);
-      // console.log("merged vertically", currentEdge);
-      return;
-    }
-  }
-  // console.log("added new edge", edge);
-  accEdges.push(edge);
-}
-
-function dfs(
-  y: number,
-  x: number,
-  char: string,
-  acc: {
-    area: number;
-    edges: Array<Edge>;
-  }
-) {
-  if (
-    y < 0 ||
-    y >= h ||
-    x < 0 ||
-    x >= w ||
-    map[y][x] !== char ||
-    visited.get(`${y}-${x}`)
-  ) {
+function walkMap(i: number, j: number, char: string, charMap: Set<string>) {
+  if (charMap.has(`${i},${j}`)) {
     return;
   }
-  visited.set(`${y}-${x}`, true);
+  charMap.add(`${i},${j}`);
+  visited.add(`${i},${j}`);
+  if (i > 0 && map[i - 1][j] === char) {
+    walkMap(i - 1, j, char, charMap);
+  }
+  if (i < h - 1 && map[i + 1][j] === char) {
+    walkMap(i + 1, j, char, charMap);
+  }
+  if (j > 0 && map[i][j - 1] === char) {
+    walkMap(i, j - 1, char, charMap);
+  }
+  if (j < w - 1 && map[i][j + 1] === char) {
+    walkMap(i, j + 1, char, charMap);
+  }
+}
 
-  acc.area += 1;
-  if (y <= 0 || map[y - 1][x] !== char) {
-    // top edge
-    pushEdge(
-      { from: { y: y - 0.5, x: x - 0.5 }, to: { y: y - 0.5, x: x + 0.5 } },
-      acc.edges
-    );
-  }
-  if (y >= h - 1 || map[y + 1][x] !== char) {
-    // bottom edge
-    pushEdge(
-      { from: { y: y + 0.5, x: x - 0.5 }, to: { y: y + 0.5, x: x + 0.5 } },
-      acc.edges
-    );
-  }
-  if (x <= 0 || map[y][x - 1] !== char) {
-    // left edge
-    pushEdge(
-      { from: { y: y - 0.5, x: x - 0.5 }, to: { y: y + 0.5, x: x - 0.5 } },
-      acc.edges
-    );
-  }
-  if (x >= w - 1 || map[y][x + 1] !== char) {
-    // right edge
-    pushEdge(
-      { from: { y: y - 0.5, x: x + 0.5 }, to: { y: y + 0.5, x: x + 0.5 } },
-      acc.edges
-    );
-  }
+function getNumberOfMark(i: number, j: number, charMap: Set<string>): number {
+  let count = 0;
 
-  dfs(y - 1, x, char, acc);
-  dfs(y + 1, x, char, acc);
-  dfs(y, x - 1, char, acc);
-  dfs(y, x + 1, char, acc);
-  return true;
+  if (charMap.has(`${i - 1},${j - 1}`)) {
+    count++;
+  }
+  if (charMap.has(`${i},${j}`)) {
+    count++;
+  }
+  if (charMap.has(`${i},${j - 1}`)) {
+    count++;
+  }
+  if (charMap.has(`${i - 1},${j}`)) {
+    count++;
+  }
+  if (count % 2 === 1) {
+    return 1;
+  } else if (count === 4) {
+    return 0;
+  } else if (charMap.has(`${i},${j}`) && charMap.has(`${i - 1},${j - 1}`)) {
+    return 2;
+  } else if (charMap.has(`${i},${j - 1}`) && charMap.has(`${i - 1},${j}`)) {
+    return 2;
+  }
+  return 0;
 }
 
 let grantTotal = 0;
 for (let i = 0; i < h; i++) {
   for (let j = 0; j < w; j++) {
-    if (!visited.get(`${i}-${j}`)) {
-      const char = map[i][j];
-      const acc = { area: 0, edges: [] };
-      dfs(i, j, char, acc);
-      // console.log({
-      //   area: acc.area,
-      //   edges: acc.edges.length,
-      //   char,
-      // });
-      // console.table(acc.edges);
-      grantTotal += acc.area * acc.edges.length;
+    if (visited.has(`${i},${j}`)) {
+      continue;
     }
+    const char = map[i][j];
+    const charMap = new Set<string>();
+    walkMap(i, j, char, charMap);
+    const cornerMap = new Map<string, number>();
+    charMap.forEach((key) => {
+      const [y, x] = key.split(",").map(Number);
+      if (!cornerMap.has(`${y},${x}`)) {
+        // left-top corner
+        cornerMap.set(`${y},${x}`, getNumberOfMark(y, x, charMap));
+      }
+      if (!cornerMap.has(`${y},${x + 1}`)) {
+        // right-top corner
+        cornerMap.set(`${y},${x + 1}`, getNumberOfMark(y, x + 1, charMap));
+      }
+      if (!cornerMap.has(`${y + 1},${x}`)) {
+        // left-bottom corner
+        cornerMap.set(`${y + 1},${x}`, getNumberOfMark(y + 1, x, charMap));
+      }
+      if (!cornerMap.has(`${y + 1},${x + 1}`)) {
+        // right-bottom corner
+        cornerMap.set(
+          `${y + 1},${x + 1}`,
+          getNumberOfMark(y + 1, x + 1, charMap)
+        );
+      }
+    });
+    const edge = Array.from(cornerMap.values()).reduce(
+      (acc, cur) => acc + cur,
+      0
+    );
+    // console.log({
+    //   char,
+    //   size: charMap.size,
+    //   edge,
+    // });
+    grantTotal += edge * charMap.size;
   }
 }
 // console.table(map);
